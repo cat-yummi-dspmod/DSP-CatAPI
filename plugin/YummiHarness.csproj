@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<RootNamespace>YummiHarness</RootNamespace>
+		<AssemblyName>YummiHarness</AssemblyName>
+		<TargetFramework>net472</TargetFramework>
+		<Deterministic>true</Deterministic>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<RestoreAdditionalProjectSources>https://nuget.bepinex.dev/v3/index.json</RestoreAdditionalProjectSources>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<LangVersion>latest</LangVersion>
+		<PlatformTarget>x64</PlatformTarget>
+		<Version>0.1.0</Version>
+		<NoWarn>$(NoWarn);NU1605;MSB3277</NoWarn>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="BepInEx.Core" Version="5.4.17" />
+		<PackageReference Include="UnityEngine.Modules" Version="2022.3.53" IncludeAssets="compile" />
+		<PackageReference Include="DysonSphereProgram.GameLibs" Version="*-*" />
+		<!-- BepInEx 5 自带的就是 Mono.Cecil 0.10.4，编译版本要与之一致 -->
+		<PackageReference Include="Mono.Cecil" Version="0.10.4" IncludeAssets="compile" />
+		<Compile Include="..\src\*.cs" LinkBase="src" />
+	</ItemGroup>
+	<PropertyGroup>
+		<ProfileDir Condition=" '$(ProfileDir)' == '' ">$(APPDATA)\r2modmanPlus-local\DysonSphereProgram\profiles\Default</ProfileDir>
+		<DeployDir>$(ProfileDir)\BepInEx\plugins\cat_yummi-$(AssemblyName)</DeployDir>
+	</PropertyGroup>
+	<!-- 游戏运行时 dll 被占用会复制失败，只报警告不让编译失败 -->
+	<Target Name="DeployToProfile" AfterTargets="Build" Condition="Exists('$(ProfileDir)')">
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" Retries="0" ContinueOnError="WarnAndContinue" />
+		<Message Importance="high" Text="已部署到 $(DeployDir)" Condition=" '$(MSBuildLastTaskResult)' == 'true' " />
+	</Target>
+</Project>
