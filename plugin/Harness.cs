@@ -401,13 +401,20 @@ namespace YummiHarness
             error = null;
             try
             {
-                string path = method.Module.FullyQualifiedName;
+                string path = DllPathOf(method);
                 if (!modules.TryGetValue(path, out ModuleDefinition module))
                 {
                     module = ModuleDefinition.ReadModule(new MemoryStream(File.ReadAllBytes(path)));
                     modules[path] = module;
                 }
+                // 先按 token 找并核对名字；对不上（例如方法对象来自被其他 mod 改写过的模块）就按签名找
+                // Look up by token and verify the name; if it does not match (e.g. the method object comes
+                // from a module another mod rewrote), fall back to a signature search
                 var def = module.LookupToken(method.MetadataToken) as MethodDefinition;
+                if (def == null || !SameMethod(def, method))
+                {
+                    def = FindBySignature(module, method);
+                }
                 if (def == null)
                 {
                     error = "dll 中找不到对应方法 / method not found in dll";
@@ -420,6 +427,57 @@ namespace YummiHarness
                 error = e.Message;
                 return null;
             }
+        }
+
+        /// <summary>
+        /// 定位原始 dll。不能只信 Module.FullyQualifiedName：方法被其他 mod 改过后，它可能是 "data-0000…" 这样的内存模块名。
+        /// Locate the original dll. Module.FullyQualifiedName cannot be trusted alone: once another mod has
+        /// patched the method it can be an in-memory module name such as "data-0000…".
+        /// </summary>
+        private static string DllPathOf(MethodBase method)
+        {
+            string path = method.Module.FullyQualifiedName;
+            if (!string.IsNullOrEmpty(path) && File.Exists(path))
+            {
+                return path;
+            }
+            string name = (method.DeclaringType ?? method.Module.GetType()).Assembly.GetName().Name + ".dll";
+            string managed = Path.Combine(BepInEx.Paths.ManagedPath, name);
+            if (File.Exists(managed))
+            {
+                return managed;
+            }
+            throw new FileNotFoundException("找不到原始 dll / original dll not found: " + name);
+        }
+
+        private static string CecilTypeName(Type t)
+        {
+            return t.FullName?.Replace('+', '/');
+        }
+
+        private static bool SameMethod(MethodDefinition def, MethodBase method)
+        {
+            return def.Name == method.Name
+                && def.DeclaringType.FullName == CecilTypeName(method.DeclaringType)
+                && def.Parameters.Count == method.GetParameters().Length;
+        }
+
+        private static MethodDefinition FindBySignature(ModuleDefinition module, MethodBase method)
+        {
+            TypeDefinition type = method.DeclaringType == null ? null : module.GetType(CecilTypeName(method.DeclaringType));
+            if (type == null)
+            {
+                return null;
+            }
+            ParameterInfo[] ps = method.GetParameters();
+            List<MethodDefinition> candidates = type.Methods
+                .Where(m => m.Name == method.Name && m.Parameters.Count == ps.Length && m.IsStatic == method.IsStatic).ToList();
+            if (candidates.Count > 1)
+            {
+                candidates = candidates.Where(m => Enumerable.Range(0, ps.Length).All(i =>
+                    m.Parameters[i].ParameterType.FullName.Replace('/', '+').TrimEnd('&') == (ps[i].ParameterType.FullName ?? "").TrimEnd('&'))).ToList();
+            }
+            return candidates.Count == 1 ? candidates[0] : null;
         }
 
         internal static void ReleaseCache()
