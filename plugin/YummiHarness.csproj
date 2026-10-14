@@ -29,7 +29,7 @@
 	</PropertyGroup>
 	<!-- 游戏运行时 dll 被占用会复制失败，只报警告不让编译失败 -->
 	<Target Name="DeployToProfile" AfterTargets="Build" Condition="Exists('$(ProfileDir)')">
-		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" Retries="0" ContinueOnError="WarnAndContinue" />
+		<Copy SourceFiles="$(TargetPath);$(ProjectDir)..\manifest.json;$(ProjectDir)..\README.md;$(ProjectDir)..\CHANGELOG.md;$(ProjectDir)..\icon.png" DestinationFolder="$(DeployDir)" Retries="0" ContinueOnError="WarnAndContinue" />
 		<Message Importance="high" Text="已部署到 $(DeployDir)" Condition=" '$(MSBuildLastTaskResult)' == 'true' " />
 	</Target>
 </Project>
