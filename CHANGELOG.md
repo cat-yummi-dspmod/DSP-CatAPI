@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2026-10-15
+
+- `Harness.RegisterCompatibilityAdvisory`: custom bilingual warnings when selected mods are all loaded (main-menu dialog + log detail).
+
 ## 0.2.0 - 2026-10-15
 
 - Fix fingerprinting when CommonAPI Preloader loads `Assembly-CSharp` from in-memory modules (`data-0000…` paths): resolve vanilla DLL via BepInEx `ManagedPath` and signature fallback.
@@ -13,6 +17,10 @@
 ---
 
 # 更新日志
+
+## 0.2.1 - 2026-10-15
+
+- `Harness.RegisterCompatibilityAdvisory`：登记自定义中英兼容性告警，指定 mod 全部加载时在主菜单提示，详情写入日志。
 
 ## 0.2.0 - 2026-10-15
 

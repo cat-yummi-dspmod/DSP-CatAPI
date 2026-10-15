@@ -86,12 +86,39 @@ namespace YummiHarness
     }
 
     /// <summary>
+    /// 自定义兼容性告警（非互斥、非 patch 失败）：当列出的插件<strong>全部</strong>已加载时，在主菜单弹窗提示。
+    /// Custom compatibility advisory (not a hard conflict): shown in the main-menu dialog when every listed plugin is loaded.
+    /// </summary>
+    public sealed class CompatibilityAdvisory
+    {
+        public string ReporterMod { get; internal set; }
+        /// <summary>这些 BepInEx 插件 GUID 全部存在时才显示本条告警。
+        /// This advisory is shown only when every listed BepInEx plugin GUID is loaded.</summary>
+        public string[] RequiredPluginGuids { get; internal set; }
+        internal string SummaryZh;
+        internal string SummaryEn;
+        internal string DetailZh;
+        internal string DetailEn;
+        /// <summary>弹窗/日志用的简短说明（按当前游戏语言）。
+        /// Short text for the dialog and log (current game language).</summary>
+        public string Summary => Lang.T(SummaryZh, SummaryEn);
+        /// <summary>写入日志的详细说明；可为空。
+        /// Longer text for the log; may be empty.</summary>
+        public string Detail => string.IsNullOrEmpty(DetailZh) && string.IsNullOrEmpty(DetailEn)
+            ? null
+            : Lang.T(DetailZh ?? SummaryZh, DetailEn ?? SummaryEn);
+        internal string DedupeKey;
+    }
+
+    /// <summary>
     /// YummiHarness 的公开接口：
     /// Public API of YummiHarness:
     ///   Harness.PatchAll(harmony, typeof(X), options)   代替 harmony.PatchAll
     ///   Harness.PatchAll(harmony, typeof(X), options)   replaces harmony.PatchAll
     ///   Harness.RegisterConflict(...)                    登记互斥 mod
     ///   Harness.RegisterConflict(...)                    register a conflicting mod
+    ///   Harness.RegisterCompatibilityAdvisory(...)       登记自定义兼容性告警（多 mod 同开时提示）
+    ///   Harness.RegisterCompatibilityAdvisory(...)       register a custom compatibility advisory when mods are used together
     ///   Harness.DeclareCompatible(a, b)                  声明两个 mod 同改一个函数是安全的（静音警告）
     ///   Harness.DeclareCompatible(a, b)                  declare that two mods patching one method is safe (silences the warning)
     /// </summary>
@@ -99,6 +126,7 @@ namespace YummiHarness
     {
         internal static readonly List<PatchFailure> Failures = new List<PatchFailure>();
         internal static readonly List<ConflictRecord> Conflicts = new List<ConflictRecord>();
+        internal static readonly List<CompatibilityAdvisory> Advisories = new List<CompatibilityAdvisory>();
         internal static readonly List<MethodBase> Targets = new List<MethodBase>();
         internal static readonly Dictionary<string, string> ModNames = new Dictionary<string, string>();
         private static readonly HashSet<string> compatible = new HashSet<string>();
@@ -156,6 +184,76 @@ namespace YummiHarness
             }
             Conflicts.Add(new ConflictRecord { Mod = modName, OtherGuid = otherGuid, OtherName = otherName ?? otherGuid, Note = note });
             Changed();
+        }
+
+        /// <summary>
+        /// 登记自定义兼容性告警。例如：「A 与 B 在某某功能上兼容性较差，可能引发统计异常」。
+        /// Register a custom compatibility advisory, e.g. "Mod A and Mod B work poorly together for feature X; may cause Y."
+        /// </summary>
+        /// <param name="reporterModName">登记方显示名（通常为本 mod 的 ModName）。</param>
+        /// <param name="whenAllPluginsLoaded">这些插件 GUID <strong>全部</strong>已加载时才显示（可含 1 个或多个其他 mod）。</param>
+        /// <param name="summaryZh">弹窗里的简短一行（中文）。</param>
+        /// <param name="summaryEn">弹窗里的简短一行（英文）。</param>
+        /// <param name="detailZh">可选，仅写入 BepInEx 日志的详细说明（中文）。</param>
+        /// <param name="detailEn">可选，仅写入 BepInEx 日志的详细说明（英文）。</param>
+        /// <param name="advisoryId">可选，用于去重；同一 id 只登记一次。</param>
+        public static void RegisterCompatibilityAdvisory(
+            string reporterModName,
+            string[] whenAllPluginsLoaded,
+            string summaryZh,
+            string summaryEn,
+            string detailZh = null,
+            string detailEn = null,
+            string advisoryId = null)
+        {
+            if (string.IsNullOrEmpty(reporterModName) || whenAllPluginsLoaded == null || whenAllPluginsLoaded.Length == 0)
+            {
+                LogWarn("[YummiHarness] RegisterCompatibilityAdvisory: reporterModName and whenAllPluginsLoaded are required.");
+                return;
+            }
+            if (string.IsNullOrEmpty(summaryZh) && string.IsNullOrEmpty(summaryEn))
+            {
+                LogWarn("[YummiHarness] RegisterCompatibilityAdvisory: summaryZh or summaryEn is required.");
+                return;
+            }
+
+            string dedupe = advisoryId;
+            if (string.IsNullOrEmpty(dedupe))
+            {
+                dedupe = reporterModName + "|" + string.Join(",", whenAllPluginsLoaded.OrderBy(g => g, StringComparer.Ordinal));
+            }
+            if (Advisories.Any(a => a.DedupeKey == dedupe))
+            {
+                return;
+            }
+
+            Advisories.Add(new CompatibilityAdvisory
+            {
+                DedupeKey = dedupe,
+                ReporterMod = reporterModName,
+                RequiredPluginGuids = whenAllPluginsLoaded.Where(g => !string.IsNullOrEmpty(g)).Distinct().ToArray(),
+                SummaryZh = summaryZh ?? summaryEn,
+                SummaryEn = summaryEn ?? summaryZh,
+                DetailZh = detailZh,
+                DetailEn = detailEn
+            });
+            Changed();
+        }
+
+        internal static bool AllPluginsLoaded(string[] guids)
+        {
+            if (guids == null || guids.Length == 0)
+            {
+                return false;
+            }
+            for (int i = 0; i < guids.Length; i++)
+            {
+                if (!Chainloader.PluginInfos.ContainsKey(guids[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         public static bool IsPluginLoaded(string guid)

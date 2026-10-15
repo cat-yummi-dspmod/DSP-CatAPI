@@ -18,14 +18,14 @@ namespace YummiHarness
     /// After other mods use Harness.PatchAll instead of harmony.PatchAll:
     ///  - 补丁只在目标方法与原版 IL 一致时才应用，失败只跳过自己
     ///  - a patch is applied only when the target matches vanilla IL; a failure skips only that patch
-    ///  - 失败的 mod、互斥的 mod、多个 mod 修改同一函数，都在主菜单一次性弹窗提示，详情写入日志
-    ///  - failed mods, conflicting mods and several mods patching one method are all shown in one main-menu dialog; details go to the log
+    ///  - 失败的 mod、互斥的 mod、自定义兼容性告警、多个 mod 修改同一函数，都在主菜单一次性弹窗提示，详情写入日志
+    ///  - failed mods, conflicts, custom compatibility advisories and shared patches are all shown in one main-menu dialog; details go to the log
     /// </summary>
     [BepInPlugin(PluginGuid, "YummiHarness", PluginVersion)]
     public class HarnessPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.yummi.dsp.yummiharness";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.2.1";
 
         private static readonly Harmony harmony = new Harmony(PluginGuid);
         private static HarnessPlugin instance;
@@ -163,6 +163,22 @@ namespace YummiHarness
                              : $"{c.Mod} conflicts with {c.OtherName}; do not use them together");
                 details.Add($"  [{c.Mod}] " + (zh ? $"与 {c.OtherName}（{c.OtherGuid}）冲突" : $"conflicts with {c.OtherName} ({c.OtherGuid})")
                             + (string.IsNullOrEmpty(c.Note) ? "" : "  " + c.Note));
+            }
+
+            // 2b) 自定义兼容性告警
+            // 2b) custom compatibility advisories
+            foreach (CompatibilityAdvisory a in Harness.Advisories)
+            {
+                string key = "advisory:" + a.DedupeKey;
+                if (!reportedKeys.Add(key) || !Harness.AllPluginsLoaded(a.RequiredPluginGuids))
+                {
+                    continue;
+                }
+                lines.Add(a.Summary);
+                string detail = a.Detail;
+                details.Add("  [advisory] [" + a.ReporterMod + "] " + a.Summary
+                            + (string.IsNullOrEmpty(detail) || detail == a.Summary ? "" : "  |  " + detail)
+                            + "  (" + string.Join(", ", a.RequiredPluginGuids) + ")");
             }
 
             // 3) 多个 mod 修改同一函数
