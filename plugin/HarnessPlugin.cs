@@ -11,6 +11,16 @@ using UnityEngine;
 
 namespace YummiHarness
 {
+    /// <summary>弹窗级别（启动项 DialogLevel）。
+    /// Dialog level (the DialogLevel setting).</summary>
+    public enum DialogLevel
+    {
+        None,
+        ErrorOnly,
+        WarningAndError,
+        All
+    }
+
     /// <summary>
     /// YummiHarness：独立的"安全注入"前置 mod。
     /// YummiHarness: standalone "safe injection" prerequisite mod.
@@ -30,7 +40,8 @@ namespace YummiHarness
         private static readonly Harmony harmony = new Harmony(PluginGuid);
         private static HarnessPlugin instance;
 
-        private ConfigEntry<bool> warnShared;
+        private ConfigEntry<DialogLevel> dialogLevel;
+        private int reportedNotices;
         private bool menuReady;
         private DateTime preloadDoneUtc;
         private int reportedFailures;
@@ -44,8 +55,8 @@ namespace YummiHarness
             Harness.LogWarn = msg => Logger.LogWarning(msg);
             Harness.LogInfo = msg => Logger.LogInfo(msg);
 
-            warnShared = Config.Bind("General", "WarnSharedTargets", true,
-                "Warn when several mods patch the same game method. | 多个 mod 修改同一函数时是否弹窗警告。");
+            dialogLevel = Config.Bind("General", "DialogLevel", DialogLevel.ErrorOnly,
+                "Which notices open the main-menu dialog. None = never; ErrorOnly = vanilla method changed so a patch was skipped; WarningAndError = also conflicts / possible interference; All = also harmless info. Everything is always written to the log. | 哪些提示会在主菜单弹窗。None=不弹；ErrorOnly=官方改了函数导致补丁被跳过；WarningAndError=另含冲突和可能的互相干扰；All=另含无害信息。日志始终全部记录。");
 
             try
             {
@@ -130,8 +141,7 @@ namespace YummiHarness
 
         private void Flush()
         {
-            var lines = new List<string>();   // 弹窗里的简短行
-            var details = new List<string>(); // 日志里的详细行
+            var items = new List<NoticeItem>(); // 所有提示；是否进弹窗由 DialogLevel 决定 / all notices; the dialog filters them by DialogLevel
             bool zh = Lang.IsChinese;
 
             // 1) patch 失败：按 mod 汇总
@@ -141,12 +151,17 @@ namespace YummiHarness
             foreach (var group in fresh.GroupBy(f => f.Mod))
             {
                 int n = group.Count();
-                lines.Add(zh ? $"{group.Key}：部分 patch 失败（{n} 个），相关功能未启用"
-                             : $"{group.Key}: some patches failed ({n}); related features are disabled");
+                var item = new NoticeItem
+                {
+                    Level = NoticeLevel.Error,
+                    Line = zh ? $"{group.Key}：部分 patch 失败（{n} 个），相关功能未启用"
+                              : $"{group.Key}: some patches failed ({n}); related features are disabled"
+                };
                 foreach (PatchFailure f in group)
                 {
-                    details.Add($"  [{f.Mod}] {f.Patch} -> {f.Target}: {f.Reason}");
+                    item.Details.Add($"  [{f.Mod}] {f.Patch} -> {f.Target}: {f.Reason}");
                 }
+                items.Add(item);
             }
 
             // 2) 互斥 mod
@@ -159,10 +174,15 @@ namespace YummiHarness
                     continue;
                 }
                 reportedKeys.Add(key);
-                lines.Add(zh ? $"{c.Mod} 与 {c.OtherName} 冲突，不能同时使用"
-                             : $"{c.Mod} conflicts with {c.OtherName}; do not use them together");
-                details.Add($"  [{c.Mod}] " + (zh ? $"与 {c.OtherName}（{c.OtherGuid}）冲突" : $"conflicts with {c.OtherName} ({c.OtherGuid})")
-                            + (string.IsNullOrEmpty(c.Note) ? "" : "  " + c.Note));
+                var citem = new NoticeItem
+                {
+                    Level = NoticeLevel.Warning,
+                    Line = zh ? $"{c.Mod} 与 {c.OtherName} 冲突，不能同时使用"
+                              : $"{c.Mod} conflicts with {c.OtherName}; do not use them together"
+                };
+                citem.Details.Add($"  [{c.Mod}] " + (zh ? $"与 {c.OtherName}（{c.OtherGuid}）冲突" : $"conflicts with {c.OtherName} ({c.OtherGuid})")
+                                  + (string.IsNullOrEmpty(c.Note) ? "" : "  " + c.Note));
+                items.Add(citem);
             }
 
             // 2b) 自定义兼容性告警
@@ -174,67 +194,115 @@ namespace YummiHarness
                 {
                     continue;
                 }
-                lines.Add(a.Summary);
                 string detail = a.Detail;
-                details.Add("  [advisory] [" + a.ReporterMod + "] " + a.Summary
-                            + (string.IsNullOrEmpty(detail) || detail == a.Summary ? "" : "  |  " + detail)
-                            + "  (" + string.Join(", ", a.RequiredPluginGuids) + ")");
+                var aitem = new NoticeItem { Level = a.Level, Line = a.Summary };
+                aitem.Details.Add("  [advisory] [" + a.ReporterMod + "] " + a.Summary
+                                  + (string.IsNullOrEmpty(detail) || detail == a.Summary ? "" : "  |  " + detail)
+                                  + "  (" + string.Join(", ", a.RequiredPluginGuids) + ")");
+                items.Add(aitem);
             }
 
-            // 3) 多个 mod 修改同一函数
-            // 3) several mods patching the same method
-            if (warnShared.Value)
+            // 2c) Harness.Report 登记的通用提示
+            // 2c) generic notices registered through Harness.Report
+            foreach (NoticeRecord n in Harness.Notices.Skip(reportedNotices).ToList())
             {
-                foreach (SharedTarget s in Harness.ComputeShared())
+                string detail = n.Detail;
+                var nitem = new NoticeItem { Level = n.Level, Line = $"{n.Mod}: {n.Summary}" };
+                nitem.Details.Add($"  [{n.Mod}] {n.Summary}" + (string.IsNullOrEmpty(detail) || detail == n.Summary ? "" : "  |  " + detail));
+                items.Add(nitem);
+            }
+            reportedNotices = Harness.Notices.Count;
+
+            // 3) 多个 mod 修改同一函数：可能互相干扰 = Warning，不会互相干扰 = Info
+            // 3) several mods patching the same method: possible interference = Warning, harmless = Info
+            foreach (SharedTarget s in Harness.ComputeShared())
+            {
+                string key = "shared:" + s.Target + "|" + string.Join(",", s.Others);
+                if (!reportedKeys.Add(key))
                 {
-                    string key = "shared:" + s.Target + "|" + string.Join(",", s.Others);
-                    if (!reportedKeys.Add(key))
-                    {
-                        continue;
-                    }
-                    string mods = string.Join(zh ? "、" : ", ", s.Others);
-                    if (!s.Risky)
-                    {
-                        // 只有 Postfix 等不会互相干扰的组合：只写日志，不弹窗 / harmless combination: log only, no dialog
-                        Logger.LogInfo(zh ? $"多个 mod 修改同一函数 {s.Target}（不会互相干扰）：{mods}"
-                                          : $"Several mods patch {s.Target} (harmless combination): {mods}");
-                        continue;
-                    }
-                    lines.Add(zh ? $"多个 mod 修改同一函数 {s.Target}：{mods}"
-                                 : $"Several mods patch the same method {s.Target}: {mods}");
-                    details.Add($"  [shared] {s.Target}: {mods}");
+                    continue;
                 }
+                string mods = string.Join(zh ? "、" : ", ", s.Others);
+                var sitem = new NoticeItem
+                {
+                    Level = s.Risky ? NoticeLevel.Warning : NoticeLevel.Info,
+                    Line = zh ? $"多个 mod 修改同一函数 {s.Target}{(s.Risky ? "" : "（不会互相干扰）")}：{mods}"
+                              : $"Several mods patch {s.Target}{(s.Risky ? "" : " (harmless combination)")}: {mods}"
+                };
+                sitem.Details.Add($"  [shared] {s.Target}: {mods}");
+                items.Add(sitem);
             }
 
-            if (lines.Count == 0)
+            if (items.Count == 0)
             {
                 return;
             }
 
-            string header = zh ? "以下 mod 检测到问题，游戏仍可继续运行。详情请看 BepInEx 日志（LogOutput.log）："
-                               : "Some mods reported problems; the game can still run. See the BepInEx log (LogOutput.log) for details:";
-            Logger.LogWarning(header);
-            foreach (string d in details)
+            // 日志：全部都写，按级别选日志等级
+            // Log: everything is written, with the log level matching the notice level
+            foreach (NoticeItem item in items)
             {
-                Logger.LogWarning(d);
+                string text = "[" + item.Level + "] " + item.Line;
+                switch (item.Level)
+                {
+                    case NoticeLevel.Error: Logger.LogError(text); break;
+                    case NoticeLevel.Warning: Logger.LogWarning(text); break;
+                    default: Logger.LogInfo(text); break;
+                }
+                foreach (string d in item.Details)
+                {
+                    if (item.Level == NoticeLevel.Error) Logger.LogError(d);
+                    else if (item.Level == NoticeLevel.Warning) Logger.LogWarning(d);
+                    else Logger.LogInfo(d);
+                }
             }
 
+            // 弹窗：只显示达到 DialogLevel 的提示
+            // Dialog: only notices that reach DialogLevel
+            DialogLevel mode = dialogLevel.Value;
+            List<NoticeItem> shownItems = items.Where(i => IsShownInDialog(mode, i.Level)).OrderByDescending(i => (int)i.Level).ToList();
+            if (shownItems.Count == 0)
+            {
+                return;
+            }
+
+            NoticeLevel top = shownItems[0].Level;
+            string header = zh ? "以下 mod 检测到问题，游戏仍可继续运行。详情请看 BepInEx 日志（LogOutput.log）："
+                               : "Some mods reported problems; the game can still run. See the BepInEx log (LogOutput.log) for details:";
             var sb = new StringBuilder(header).Append("\n\n");
             int shown = 0;
-            foreach (string line in lines)
+            foreach (NoticeItem item in shownItems)
             {
                 if (shown++ >= 8)
                 {
                     sb.Append("...\n");
                     break;
                 }
-                sb.Append("- ").Append(line).Append('\n');
+                sb.Append("- [").Append(item.Level).Append("] ").Append(item.Line).Append('\n');
             }
             UIMessageBox.Show(
                 zh ? "YummiHarness | 模组提示" : "YummiHarness | Mod notice",
                 sb.ToString(),
                 "确定".Translate(),
-                UIMessageBox.WARNING);
+                top == NoticeLevel.Error ? UIMessageBox.ERROR : top == NoticeLevel.Warning ? UIMessageBox.WARNING : UIMessageBox.INFO);
+        }
+
+        private static bool IsShownInDialog(DialogLevel mode, NoticeLevel level)
+        {
+            switch (mode)
+            {
+                case DialogLevel.None: return false;
+                case DialogLevel.ErrorOnly: return level == NoticeLevel.Error;
+                case DialogLevel.WarningAndError: return level >= NoticeLevel.Warning;
+                default: return true;
+            }
+        }
+
+        private sealed class NoticeItem
+        {
+            public NoticeLevel Level;
+            public string Line;
+            public readonly List<string> Details = new List<string>();
         }
     }
 

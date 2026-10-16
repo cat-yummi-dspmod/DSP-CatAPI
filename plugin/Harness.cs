@@ -26,6 +26,31 @@ namespace YummiHarness
         }
     }
 
+    /// <summary>提示级别。Error：目标函数已被官方改动（指纹不符/找不到）导致补丁未应用；Warning：可能有问题（冲突、可能互相干扰）；Info：只写日志。
+    /// Notice level. Error: the vanilla method changed (fingerprint mismatch / not found) so a patch was not applied; Warning: possible problem (conflict, possible interference); Info: log only.</summary>
+    public enum NoticeLevel
+    {
+        Info = 0,
+        Warning = 1,
+        Error = 2
+    }
+
+    /// <summary>通过 Harness.Report 登记的一条通用提示。
+    /// A generic notice registered through Harness.Report.</summary>
+    internal sealed class NoticeRecord
+    {
+        public NoticeLevel Level;
+        public string Mod;
+        public string SummaryZh;
+        public string SummaryEn;
+        public string DetailZh;
+        public string DetailEn;
+        public string Summary => Lang.En(SummaryEn).ZhCN(SummaryZh);
+        public string Detail => string.IsNullOrEmpty(DetailZh) && string.IsNullOrEmpty(DetailEn)
+            ? null
+            : Lang.En(DetailEn ?? SummaryEn).ZhCN(DetailZh ?? SummaryZh);
+    }
+
     /// <summary>一次 patch 失败的记录。Reason 会按"读取时"的语言返回（弹窗/详细日志时为游戏语言）。
     /// Record of one failed patch. Reason is returned in the language at read time (game language for the dialog and detailed log).</summary>
     public sealed class PatchFailure
@@ -33,9 +58,12 @@ namespace YummiHarness
         public string Mod { get; internal set; }
         public string Patch { get; internal set; }
         public string Target { get; internal set; }
+        /// <summary>失败一律是 Error（官方改了目标函数，或补丁本身出错）。
+        /// A failure is always Error (vanilla changed the target, or the patch itself threw).</summary>
+        public NoticeLevel Level => NoticeLevel.Error;
         internal string ReasonZh;
         internal string ReasonEn;
-        public string Reason => Lang.T(ReasonZh, ReasonEn);
+        public string Reason => Lang.En(ReasonEn).ZhCN(ReasonZh);
     }
 
     /// <summary>目标函数已被其他 mod 修改过。
@@ -92,6 +120,7 @@ namespace YummiHarness
     public sealed class CompatibilityAdvisory
     {
         public string ReporterMod { get; internal set; }
+        public NoticeLevel Level { get; internal set; }
         /// <summary>这些 BepInEx 插件 GUID 全部存在时才显示本条告警。
         /// This advisory is shown only when every listed BepInEx plugin GUID is loaded.</summary>
         public string[] RequiredPluginGuids { get; internal set; }
@@ -101,12 +130,12 @@ namespace YummiHarness
         internal string DetailEn;
         /// <summary>弹窗/日志用的简短说明（按当前游戏语言）。
         /// Short text for the dialog and log (current game language).</summary>
-        public string Summary => Lang.T(SummaryZh, SummaryEn);
+        public string Summary => Lang.En(SummaryEn).ZhCN(SummaryZh);
         /// <summary>写入日志的详细说明；可为空。
         /// Longer text for the log; may be empty.</summary>
         public string Detail => string.IsNullOrEmpty(DetailZh) && string.IsNullOrEmpty(DetailEn)
             ? null
-            : Lang.T(DetailZh ?? SummaryZh, DetailEn ?? SummaryEn);
+            : Lang.En(DetailEn ?? SummaryEn).ZhCN(DetailZh ?? SummaryZh);
         internal string DedupeKey;
     }
 
@@ -204,7 +233,8 @@ namespace YummiHarness
             string summaryEn,
             string detailZh = null,
             string detailEn = null,
-            string advisoryId = null)
+            string advisoryId = null,
+            NoticeLevel level = NoticeLevel.Warning)
         {
             if (string.IsNullOrEmpty(reporterModName) || whenAllPluginsLoaded == null || whenAllPluginsLoaded.Length == 0)
             {
@@ -231,7 +261,33 @@ namespace YummiHarness
             {
                 DedupeKey = dedupe,
                 ReporterMod = reporterModName,
+                Level = level,
                 RequiredPluginGuids = whenAllPluginsLoaded.Where(g => !string.IsNullOrEmpty(g)).Distinct().ToArray(),
+                SummaryZh = summaryZh ?? summaryEn,
+                SummaryEn = summaryEn ?? summaryZh,
+                DetailZh = detailZh,
+                DetailEn = detailEn
+            });
+            Changed();
+        }
+
+        internal static readonly List<NoticeRecord> Notices = new List<NoticeRecord>();
+
+        /// <summary>
+        /// 登记一条通用提示，带级别。是否弹窗由玩家在 YummiHarness 配置里的 DialogLevel 决定，日志始终会写。
+        /// Register a generic notice with a level. Whether it appears in the dialog is decided by the player's DialogLevel setting; it is always logged.
+        /// </summary>
+        public static void Report(NoticeLevel level, string modName, string summaryZh, string summaryEn, string detailZh = null, string detailEn = null)
+        {
+            if (string.IsNullOrEmpty(modName) || (string.IsNullOrEmpty(summaryZh) && string.IsNullOrEmpty(summaryEn)))
+            {
+                LogWarn("[YummiHarness] Report: modName and summaryZh or summaryEn are required.");
+                return;
+            }
+            Notices.Add(new NoticeRecord
+            {
+                Level = level,
+                Mod = modName,
                 SummaryZh = summaryZh ?? summaryEn,
                 SummaryEn = summaryEn ?? summaryZh,
                 DetailZh = detailZh,
@@ -300,7 +356,7 @@ namespace YummiHarness
                 var guard = patch.GetCustomAttributes(typeof(GuardAttribute), false).FirstOrDefault() as GuardAttribute;
                 if (guard == null)
                 {
-                    LogWarn($"[YummiHarness] [{modName}] " + Lang.T($"{patchName} 没有 [Guard]，不做校验直接应用", $"{patchName} has no [Guard]; applied without verification"));
+                    LogWarn($"[YummiHarness] [{modName}] " + Lang.En($"{patchName} has no [Guard]; applied without verification").ZhCN($"{patchName} 没有 [Guard]，不做校验直接应用"));
                 }
                 else
                 {
@@ -327,7 +383,7 @@ namespace YummiHarness
                     try { apply = options.OnShared(shared); } catch (Exception e) { LogWarn("[YummiHarness] OnShared: " + e.Message); }
                     if (!apply)
                     {
-                        LogInfo($"[YummiHarness] [{modName}] " + Lang.T($"{patchName} 因目标已被其他 mod 修改而按调用方要求跳过", $"{patchName} skipped by caller because the target is already patched by another mod"));
+                        LogInfo($"[YummiHarness] [{modName}] " + Lang.En($"{patchName} skipped by caller because the target is already patched by another mod").ZhCN($"{patchName} 因目标已被其他 mod 修改而按调用方要求跳过"));
                         return;
                     }
                 }
@@ -369,7 +425,7 @@ namespace YummiHarness
             }
             // 补丁发生时游戏语言可能还没加载，这行日志的语言是尽力而为；详细日志会在主菜单阶段再按游戏语言输出一遍
             // The game language may not be loaded when a patch runs, so this log line's language is best effort; detailed logs are printed again in the game language at the main-menu stage
-            LogWarn($"[YummiHarness] [{mod}] " + Lang.T("patch 未应用 ", "patch not applied ") + $"{patch} -> {target}: {failure.Reason}");
+            LogWarn($"[YummiHarness] [{mod}] " + Lang.En("patch not applied ").ZhCN("patch 未应用 ") + $"{patch} -> {target}: {failure.Reason}");
         }
 
         internal static List<string> OwnersOf(MethodBase method)
