@@ -150,8 +150,10 @@ namespace YummiHarness
     ///   Harness.RegisterCompatibilityAdvisory(...)       register a custom compatibility advisory when mods are used together
     ///   Harness.DeclareCompatible(a, b)                  声明两个 mod 同改一个函数是安全的（静音警告）
     ///   Harness.DeclareCompatible(a, b)                  declare that two mods patching one method is safe (silences the warning)
+    ///   Harness.ApplyConfigSchema(config, ver, opts)     cfg 格式版本：WipeIfBelow 删旧重建，或 Upgrade 里 MigrateKey / Remove
+    ///   Harness.ApplyConfigSchema(config, ver, opts)     config schema version: WipeIfBelow or Upgrade with MigrateKey / Remove
     /// </summary>
-    public static class Harness
+    public static partial class Harness
     {
         internal static readonly List<PatchFailure> Failures = new List<PatchFailure>();
         internal static readonly List<ConflictRecord> Conflicts = new List<ConflictRecord>();

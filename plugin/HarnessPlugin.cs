@@ -35,7 +35,7 @@ namespace YummiHarness
     public class HarnessPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.yummi.dsp.yummiharness";
-        public const string PluginVersion = "0.2.1";
+        public const string PluginVersion = "0.2.3";
 
         private static readonly Harmony harmony = new Harmony(PluginGuid);
         private static HarnessPlugin instance;
