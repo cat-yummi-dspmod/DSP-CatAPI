@@ -9,7 +9,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 
-namespace YummiHarness
+namespace CatAPI
 {
     /// <summary>弹窗级别（启动项 DialogLevel）。
     /// Dialog level (the DialogLevel setting).</summary>
@@ -22,8 +22,8 @@ namespace YummiHarness
     }
 
     /// <summary>
-    /// YummiHarness：独立的"安全注入"前置 mod。
-    /// YummiHarness: standalone "safe injection" prerequisite mod.
+    /// CatAPI：独立的"安全注入"前置 mod。
+    /// CatAPI: standalone "safe injection" prerequisite mod.
     /// 其他 mod 用 Harness.PatchAll 代替 harmony.PatchAll 后：
     /// After other mods use Harness.PatchAll instead of harmony.PatchAll:
     ///  - 补丁只在目标方法与原版 IL 一致时才应用，失败只跳过自己
@@ -31,11 +31,11 @@ namespace YummiHarness
     ///  - 失败的 mod、互斥的 mod、自定义兼容性告警、多个 mod 修改同一函数，都在主菜单一次性弹窗提示，详情写入日志
     ///  - failed mods, conflicts, custom compatibility advisories and shared patches are all shown in one main-menu dialog; details go to the log
     /// </summary>
-    [BepInPlugin(PluginGuid, "YummiHarness", PluginVersion)]
+    [BepInPlugin(PluginGuid, "CatAPI", PluginVersion)]
     public class HarnessPlugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "com.yummi.dsp.yummiharness";
-        public const string PluginVersion = "0.2.3";
+        public const string PluginGuid = "com.cat.dsp.catapi";
+        public const string PluginVersion = "0.2.4";
 
         private static readonly Harmony harmony = new Harmony(PluginGuid);
         private static HarnessPlugin instance;
@@ -51,7 +51,7 @@ namespace YummiHarness
         private void Awake()
         {
             instance = this;
-            Harness.ModNames[PluginGuid] = "YummiHarness";
+            Harness.ModNames[PluginGuid] = "CatAPI";
             Harness.LogWarn = msg => Logger.LogWarning(msg);
             Harness.LogInfo = msg => Logger.LogInfo(msg);
 
@@ -132,7 +132,7 @@ namespace YummiHarness
                     }
                     catch (Exception e)
                     {
-                        Logger.LogError("YummiHarness flush failed: " + e);
+                        Logger.LogError("CatAPI flush failed: " + e);
                     }
                     Harness.ReleaseCache();
                 }
@@ -281,7 +281,7 @@ namespace YummiHarness
                 sb.Append("- [").Append(item.Level).Append("] ").Append(item.Line).Append('\n');
             }
             UIMessageBox.Show(
-                zh ? "YummiHarness | 模组提示" : "YummiHarness | Mod notice",
+                zh ? "CatAPI | 模组提示" : "CatAPI | Mod notice",
                 sb.ToString(),
                 "确定".Translate(),
                 top == NoticeLevel.Error ? UIMessageBox.ERROR : top == NoticeLevel.Warning ? UIMessageBox.WARNING : UIMessageBox.INFO);

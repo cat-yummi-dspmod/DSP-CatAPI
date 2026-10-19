@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4 - 2026-10-19
+
+- Renamed from **YummiHarness** to **CatAPI** (assembly, Thunderstore package, GitHub `DSP-CatAPI`). Some mod authors objected to using the author name in mod titles; this release drops that naming.
+- BepInEx plugin GUID is now `com.cat.dsp.catapi` (update dependencies and cfg paths if you pinned the old GUID).
+
 ## 0.2.3 - 2026-10-17
 
 - `Harness.PruneConfigKeys` to drop cfg entries no longer bound by the mod.
@@ -26,6 +31,11 @@
 ---
 
 # 更新日志
+
+## 0.2.4 - 2026-10-19
+
+- 自 **YummiHarness** 更名为 **CatAPI**（程序集、Thunderstore 包名、GitHub `DSP-CatAPI`）。因部分 mod 作者反对以作者名作为模组名的一部分，本版本起不再使用该命名。
+- BepInEx 插件 GUID 改为 `com.cat.dsp.catapi`（若曾固定旧 GUID，请更新依赖与 cfg 路径）。
 
 ## 0.2.3 - 2026-10-17
 

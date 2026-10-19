@@ -1,12 +1,12 @@
-# Thunderstore package: YummiHarness.dll + manifest + README + CHANGELOG + icon
+# Thunderstore package: CatAPI.dll + manifest + README + CHANGELOG + icon
 
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
-$Dll = Join-Path $Root 'plugin\bin\Release\net472\YummiHarness.dll'
-$Zip = Join-Path $Root 'bin\Release\YummiHarness.zip'
+$Dll = Join-Path $Root 'plugin\bin\Release\net472\CatAPI.dll'
+$Zip = Join-Path $Root 'bin\Release\CatAPI.zip'
 
 if (-not (Test-Path $Dll)) {
-    dotnet build (Join-Path $Root 'plugin\YummiHarness.csproj') -c Release
+    dotnet build (Join-Path $Root 'plugin\CatAPI.csproj') -c Release
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

@@ -3,8 +3,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
-		<RootNamespace>YummiHarness</RootNamespace>
-		<AssemblyName>YummiHarness</AssemblyName>
+		<RootNamespace>CatAPI</RootNamespace>
+		<AssemblyName>CatAPI</AssemblyName>
 		<TargetFramework>net472</TargetFramework>
 		<Deterministic>true</Deterministic>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -24,7 +24,7 @@
 		<Compile Include="..\src\*.cs" LinkBase="src" />
 	</ItemGroup>
 	<PropertyGroup>
-		<ProfileDir Condition=" '$(ProfileDir)' == '' ">$(APPDATA)\r2modmanPlus-local\DysonSphereProgram\profiles\YummiHarness</ProfileDir>
+		<ProfileDir Condition=" '$(ProfileDir)' == '' ">$(APPDATA)\r2modmanPlus-local\DysonSphereProgram\profiles\CatAPI</ProfileDir>
 		<DeployDir>$(ProfileDir)\BepInEx\plugins\cat_yummi-$(AssemblyName)</DeployDir>
 	</PropertyGroup>
 	<!-- 游戏运行时 dll 被占用会复制失败，只报警告不让编译失败 -->

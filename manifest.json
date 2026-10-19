@@ -1,8 +1,8 @@
 {
-  "name": "YummiHarness",
+  "name": "CatAPI",
   "description": "Safe patch injection for DSP mods: patch only if the game method is unchanged. | 戴森球计划安全注入前置：目标方法与原版一致才打补丁",
-  "version_number": "0.2.3",
-  "website_url": "https://github.com/cat-yummi-dspmod/DSP-YummiHarness",
+  "version_number": "0.2.4",
+  "website_url": "https://github.com/cat-yummi-dspmod/DSP-CatAPI",
   "dependencies": [
     "xiaoye97-BepInEx-5.4.17"
   ]

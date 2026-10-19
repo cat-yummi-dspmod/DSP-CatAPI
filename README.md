@@ -1,6 +1,6 @@
-# YummiHarness
+# CatAPI
 
-https://github.com/cat-yummi-dspmod/DSP-YummiHarness
+https://github.com/cat-yummi-dspmod/DSP-CatAPI
 
 <details>
 <summary>English</summary>
@@ -50,7 +50,7 @@ Harness.PruneConfigKeys(config, entry1.Definition, entry2.Definition,
 ## For mod authors
 
 ```csharp
-[BepInDependency("com.yummi.dsp.yummiharness")]
+[BepInDependency("com.cat.dsp.catapi")]
 ...
 Harness.RegisterConflict("MyMod", "other.guid", "OtherMod");
 Harness.RegisterCompatibilityAdvisory(
@@ -66,7 +66,7 @@ Harness.PatchAll(harmony, typeof(MyPatches), new PatchOptions { ModName = "MyMod
 // write patches as usual, add [Guard]
 [HarmonyPostfix]
 [HarmonyPatch(typeof(StationComponent), nameof(StationComponent.AddItem))]
-[YummiHarness.Guard("806f415ada529868")]
+[CatAPI.Guard("806f415ada529868")]
 public static void AddItem_Postfix(...) { }
 ```
 
@@ -95,7 +95,7 @@ Without the script: `harness scan <Mod.dll> <game folder>`, `harness dump <game 
 ## Build
 
 ```
-dotnet build plugin -c Release -o bin     # YummiHarness.dll
+dotnet build plugin -c Release -o bin     # CatAPI.dll
 dotnet build cli -c Release -o bin        # harness.exe
 ```
 
@@ -128,7 +128,7 @@ BepInEx 不会自动删掉改名/换段的旧键。在其它 `Config.Bind` 之�
 ## mod 作者怎么用
 
 ```csharp
-[BepInDependency("com.yummi.dsp.yummiharness")]
+[BepInDependency("com.cat.dsp.catapi")]
 ...
 Harness.RegisterConflict("MyMod", "other.guid", "OtherMod");
 Harness.RegisterCompatibilityAdvisory(
@@ -144,7 +144,7 @@ Harness.PatchAll(harmony, typeof(MyPatches), new PatchOptions { ModName = "MyMod
 // 补丁方法照旧写，另加 [Guard]
 [HarmonyPostfix]
 [HarmonyPatch(typeof(StationComponent), nameof(StationComponent.AddItem))]
-[YummiHarness.Guard("806f415ada529868")]
+[CatAPI.Guard("806f415ada529868")]
 public static void AddItem_Postfix(...) { }
 ```
 
@@ -173,7 +173,7 @@ public static void AddItem_Postfix(...) { }
 ## 构建
 
 ```
-dotnet build plugin -c Release -o bin     # YummiHarness.dll
+dotnet build plugin -c Release -o bin     # CatAPI.dll
 dotnet build cli -c Release -o bin        # harness.exe
 ```
 

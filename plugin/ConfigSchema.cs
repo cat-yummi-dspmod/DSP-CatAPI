@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BepInEx.Configuration;
 
-namespace YummiHarness
+namespace CatAPI
 {
     /// <summary>
     /// BepInEx 不会自动删除或迁移 cfg 里的旧键。在 Bind 之前调用 <see cref="Harness.ApplyConfigSchema"/>：
@@ -69,8 +69,8 @@ namespace YummiHarness
         public const string ConfigSchemaVersionKey = "Version";
 
         private static string SchemaVersionDesc =>
-            Lang.En("Config file format version managed by YummiHarness.ApplyConfigSchema. Do not edit unless you know what you are doing.")
-                .ZhCN("由 YummiHarness.ApplyConfigSchema 维护的配置格式版本，不懂请勿手改。");
+            Lang.En("Config file format version managed by CatAPI.ApplyConfigSchema. Do not edit unless you know what you are doing.")
+                .ZhCN("由 CatAPI.ApplyConfigSchema 维护的配置格式版本，不懂请勿手改。");
 
         /// <summary>
         /// Call once before other <c>Config.Bind</c> calls. Returns a context for ApplyTransferred after Bind (null if nothing to apply).

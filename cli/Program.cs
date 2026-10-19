@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Mono.Cecil;
-using YummiHarness;
+using CatAPI;
 
-namespace YummiHarness.Cli
+namespace CatAPI.Cli
 {
     internal static class Program
     {
         private const string Usage =
-@"harness - YummiHarness 补丁指纹工具 / patch fingerprint tool
+@"harness - CatAPI 补丁指纹工具 / patch fingerprint tool
 
 <game> = 游戏目录(含 DSPGAME.exe) 或 Assembly-CSharp.dll 的路径 / game folder or path to Assembly-CSharp.dll
 
@@ -209,7 +209,7 @@ namespace YummiHarness.Cli
                     }
 
                     string actual = Fingerprint.Hash(target);
-                    CustomAttribute guard = patch.CustomAttributes.FirstOrDefault(a => a.AttributeType.FullName == "YummiHarness.GuardAttribute");
+                    CustomAttribute guard = patch.CustomAttributes.FirstOrDefault(a => a.AttributeType.FullName == "CatAPI.GuardAttribute");
                     string expected = guard?.ConstructorArguments.Count > 0 ? guard.ConstructorArguments[0].Value as string : null;
                     if (expected == null)
                     {

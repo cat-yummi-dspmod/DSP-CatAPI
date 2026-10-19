@@ -7,7 +7,7 @@ using BepInEx.Bootstrap;
 using HarmonyLib;
 using Mono.Cecil;
 
-namespace YummiHarness
+namespace CatAPI
 {
     /// <summary>
     /// 标在补丁方法上：只有目标方法当前的指纹等于 Hash，这个补丁才会被应用。
@@ -140,8 +140,8 @@ namespace YummiHarness
     }
 
     /// <summary>
-    /// YummiHarness 的公开接口：
-    /// Public API of YummiHarness:
+    /// CatAPI 的公开接口：
+    /// Public API of CatAPI:
     ///   Harness.PatchAll(harmony, typeof(X), options)   代替 harmony.PatchAll
     ///   Harness.PatchAll(harmony, typeof(X), options)   replaces harmony.PatchAll
     ///   Harness.RegisterConflict(...)                    登记互斥 mod
@@ -240,12 +240,12 @@ namespace YummiHarness
         {
             if (string.IsNullOrEmpty(reporterModName) || whenAllPluginsLoaded == null || whenAllPluginsLoaded.Length == 0)
             {
-                LogWarn("[YummiHarness] RegisterCompatibilityAdvisory: reporterModName and whenAllPluginsLoaded are required.");
+                LogWarn("[CatAPI] RegisterCompatibilityAdvisory: reporterModName and whenAllPluginsLoaded are required.");
                 return;
             }
             if (string.IsNullOrEmpty(summaryZh) && string.IsNullOrEmpty(summaryEn))
             {
-                LogWarn("[YummiHarness] RegisterCompatibilityAdvisory: summaryZh or summaryEn is required.");
+                LogWarn("[CatAPI] RegisterCompatibilityAdvisory: summaryZh or summaryEn is required.");
                 return;
             }
 
@@ -276,14 +276,14 @@ namespace YummiHarness
         internal static readonly List<NoticeRecord> Notices = new List<NoticeRecord>();
 
         /// <summary>
-        /// 登记一条通用提示，带级别。是否弹窗由玩家在 YummiHarness 配置里的 DialogLevel 决定，日志始终会写。
+        /// 登记一条通用提示，带级别。是否弹窗由玩家在 CatAPI 配置里的 DialogLevel 决定，日志始终会写。
         /// Register a generic notice with a level. Whether it appears in the dialog is decided by the player's DialogLevel setting; it is always logged.
         /// </summary>
         public static void Report(NoticeLevel level, string modName, string summaryZh, string summaryEn, string detailZh = null, string detailEn = null)
         {
             if (string.IsNullOrEmpty(modName) || (string.IsNullOrEmpty(summaryZh) && string.IsNullOrEmpty(summaryEn)))
             {
-                LogWarn("[YummiHarness] Report: modName and summaryZh or summaryEn are required.");
+                LogWarn("[CatAPI] Report: modName and summaryZh or summaryEn are required.");
                 return;
             }
             Notices.Add(new NoticeRecord
@@ -358,7 +358,7 @@ namespace YummiHarness
                 var guard = patch.GetCustomAttributes(typeof(GuardAttribute), false).FirstOrDefault() as GuardAttribute;
                 if (guard == null)
                 {
-                    LogWarn($"[YummiHarness] [{modName}] " + Lang.En($"{patchName} has no [Guard]; applied without verification").ZhCN($"{patchName} 没有 [Guard]，不做校验直接应用"));
+                    LogWarn($"[CatAPI] [{modName}] " + Lang.En($"{patchName} has no [Guard]; applied without verification").ZhCN($"{patchName} 没有 [Guard]，不做校验直接应用"));
                 }
                 else
                 {
@@ -382,10 +382,10 @@ namespace YummiHarness
                 {
                     var shared = new SharedTarget { Mod = modName, Target = targetName, Others = others.Select(DisplayName).ToList() };
                     bool apply = true;
-                    try { apply = options.OnShared(shared); } catch (Exception e) { LogWarn("[YummiHarness] OnShared: " + e.Message); }
+                    try { apply = options.OnShared(shared); } catch (Exception e) { LogWarn("[CatAPI] OnShared: " + e.Message); }
                     if (!apply)
                     {
-                        LogInfo($"[YummiHarness] [{modName}] " + Lang.En($"{patchName} skipped by caller because the target is already patched by another mod").ZhCN($"{patchName} 因目标已被其他 mod 修改而按调用方要求跳过"));
+                        LogInfo($"[CatAPI] [{modName}] " + Lang.En($"{patchName} skipped by caller because the target is already patched by another mod").ZhCN($"{patchName} 因目标已被其他 mod 修改而按调用方要求跳过"));
                         return;
                     }
                 }
@@ -419,7 +419,7 @@ namespace YummiHarness
             bool record = true;
             if (options?.OnFailure != null)
             {
-                try { record = options.OnFailure(failure); } catch (Exception e) { LogWarn("[YummiHarness] OnFailure: " + e.Message); }
+                try { record = options.OnFailure(failure); } catch (Exception e) { LogWarn("[CatAPI] OnFailure: " + e.Message); }
             }
             if (record)
             {
@@ -427,7 +427,7 @@ namespace YummiHarness
             }
             // 补丁发生时游戏语言可能还没加载，这行日志的语言是尽力而为；详细日志会在主菜单阶段再按游戏语言输出一遍
             // The game language may not be loaded when a patch runs, so this log line's language is best effort; detailed logs are printed again in the game language at the main-menu stage
-            LogWarn($"[YummiHarness] [{mod}] " + Lang.En("patch not applied ").ZhCN("patch 未应用 ") + $"{patch} -> {target}: {failure.Reason}");
+            LogWarn($"[CatAPI] [{mod}] " + Lang.En("patch not applied ").ZhCN("patch 未应用 ") + $"{patch} -> {target}: {failure.Reason}");
         }
 
         internal static List<string> OwnersOf(MethodBase method)
@@ -468,7 +468,7 @@ namespace YummiHarness
                 {
                     continue;
                 }
-                // YummiHarness 自己的挂钩不算 / YummiHarness's own hooks do not count
+                // CatAPI 自己的挂钩不算 / CatAPI's own hooks do not count
                 List<string> owners = OwnersOf(target).Where(o => o != HarnessPlugin.PluginGuid).ToList();
                 bool shared = false;
                 bool risky = false;

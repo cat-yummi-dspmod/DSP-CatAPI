@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace YummiHarness
+namespace CatAPI
 {
     /// <summary>
     /// 英语是每句都有的底。其他语言挂在这句后面，游戏语言对上就用，对不上就用英语。

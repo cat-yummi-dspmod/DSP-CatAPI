@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -6,7 +6,7 @@ using System.Text;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace YummiHarness
+namespace CatAPI
 {
     /// <summary>
     /// 方法指纹：把方法的 IL 转成"人类可读的规范化文本"，再对文本做哈希。
